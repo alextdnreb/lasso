@@ -88,7 +88,7 @@ public class DataSourceController extends BaseApi {
     @ResponseBody
     public ResponseEntity<ImplementationResponse> getImplementations(
             @RequestBody ImplementationRequest request,
-            /*@ApiIgnore*/ @AuthenticationPrincipal UserDetails userDetails,
+            /* @ApiIgnore */ @AuthenticationPrincipal UserDetails userDetails,
             HttpServletRequest httpServletRequest,
             HttpServletResponse httpServletResponse) {
         // fix to default
@@ -101,7 +101,7 @@ public class DataSourceController extends BaseApi {
     public ResponseEntity<ImplementationResponse> getImplementations(
             @RequestBody ImplementationRequest request,
             @PathVariable("dataSource") String dataSource,
-            /*@ApiIgnore*/ @AuthenticationPrincipal UserDetails userDetails,
+            /* @ApiIgnore */ @AuthenticationPrincipal UserDetails userDetails,
             HttpServletRequest httpServletRequest,
             HttpServletResponse httpServletResponse) {
         // get user details
@@ -119,9 +119,11 @@ public class DataSourceController extends BaseApi {
 
             Map<String, CodeUnit> implementations = request.getIds().stream().map(id -> {
                 try {
-                    CandidateQueryResult result = mavenCentralIndex.query("*:*", searchOptions, new String[]{String.format("id:\"%s\"", id)}, 0, 1, Collections.emptyList());
+                    CandidateQueryResult result = mavenCentralIndex.query("*:*", searchOptions,
+                            new String[] { String.format("id:\"%s\"", id) }, 0, 1, Collections.emptyList());
                     List<CodeUnit> impls = result.getCandidates().stream().map(c -> {
-                        CodeUnit implementation = MavenCodeUnitUtils.toImplementation(((SolrCandidateDocument) c).getSolrDocument());
+                        CodeUnit implementation = MavenCodeUnitUtils
+                                .toImplementation(((SolrCandidateDocument) c).getSolrDocument());
                         implementation.setDataSource(dataSource);
 
                         // raw
@@ -131,9 +133,9 @@ public class DataSourceController extends BaseApi {
                     }).collect(Collectors.toList());
 
                     return impls.get(0);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     if (LOG.isWarnEnabled()) {
-                        LOG.warn(String.format("Could not get implementations"), e);
+                        LOG.warn("hallo hallo test " + String.format("Could not get implementations"), e);
                     }
                 }
 
@@ -142,7 +144,7 @@ public class DataSourceController extends BaseApi {
                     i -> i,
                     (e1, e2) -> e1,
                     LinkedHashMap::new));
-            //.collect(Collectors.toMap(CodeUnit::getId, i -> i));
+            // .collect(Collectors.toMap(CodeUnit::getId, i -> i));
 
             if (LOG.isInfoEnabled()) {
                 LOG.info("Returning getImplementations response to '{}'",
@@ -171,7 +173,7 @@ public class DataSourceController extends BaseApi {
     public ResponseEntity<SearchRequestResponse> query(
             @RequestBody SearchQueryRequest request,
             @PathVariable("dataSource") String dataSource,
-            /*@ApiIgnore*/ @AuthenticationPrincipal UserDetails userDetails,
+            /* @ApiIgnore */ @AuthenticationPrincipal UserDetails userDetails,
             HttpServletRequest httpServletRequest,
             HttpServletResponse httpServletResponse) {
         // get user details
@@ -181,7 +183,7 @@ public class DataSourceController extends BaseApi {
 
         try {
             // just show systems of given script execution
-            if(StringUtils.isNotBlank(request.getExecutionId())) {
+            if (StringUtils.isNotBlank(request.getExecutionId())) {
                 //
                 QueryStrategy queryStrategy = new ScriptQueryStrategy(clusterEngine, lassoConfiguration);
                 response = queryStrategy.query(request, dataSource);
@@ -212,7 +214,7 @@ public class DataSourceController extends BaseApi {
     @RequestMapping(value = "/info", method = RequestMethod.GET, produces = "application/json;charset=UTF-8")
     @ResponseBody
     public ResponseEntity<DataSourceResponse> getDataSources(
-            /*@ApiIgnore*/ @AuthenticationPrincipal UserDetails userDetails,
+            /* @ApiIgnore */ @AuthenticationPrincipal UserDetails userDetails,
             HttpServletRequest httpServletRequest) {
         // get user details
         UserInfo userInfo = getUserInfo(httpServletRequest, userDetails);
@@ -220,22 +222,24 @@ public class DataSourceController extends BaseApi {
         try {
             Map<String, DataSource> dataSourceMap = applicationContext.getBeansOfType(DataSource.class);
 
-            Map<String, de.uni_mannheim.swt.lasso.core.dto.DataSource> dataSources = dataSourceMap.values().stream().map(ds -> {
-                de.uni_mannheim.swt.lasso.core.dto.DataSource dsDesc = new de.uni_mannheim.swt.lasso.core.dto.DataSource();
-                dsDesc.setId(ds.getId());
-                dsDesc.setName(ds.getName());
-                dsDesc.setDescription(ds.getDescription());
+            Map<String, de.uni_mannheim.swt.lasso.core.dto.DataSource> dataSources = dataSourceMap.values().stream()
+                    .map(ds -> {
+                        de.uni_mannheim.swt.lasso.core.dto.DataSource dsDesc = new de.uni_mannheim.swt.lasso.core.dto.DataSource();
+                        dsDesc.setId(ds.getId());
+                        dsDesc.setName(ds.getName());
+                        dsDesc.setDescription(ds.getDescription());
 
-                if(ds instanceof MavenDataSource) {
-                    MavenDataSource mds = (MavenDataSource) ds;
-                    HttpSolrClient solrClient = (HttpSolrClient) mds.getMavenCentralIndex().getMavenCentralRepository().getSolrClient();
-                    dsDesc.setUrl(solrClient.getBaseURL());
-                } else {
-                    dsDesc.setUrl("none");
-                }
+                        if (ds instanceof MavenDataSource) {
+                            MavenDataSource mds = (MavenDataSource) ds;
+                            HttpSolrClient solrClient = (HttpSolrClient) mds.getMavenCentralIndex()
+                                    .getMavenCentralRepository().getSolrClient();
+                            dsDesc.setUrl(solrClient.getBaseURL());
+                        } else {
+                            dsDesc.setUrl("none");
+                        }
 
-                return dsDesc;
-            }).collect(Collectors.toMap(k -> k.getId(), v -> v));
+                        return dsDesc;
+                    }).collect(Collectors.toMap(k -> k.getId(), v -> v));
 
             DataSourceResponse response = new DataSourceResponse();
             response.setDataSources(dataSources);

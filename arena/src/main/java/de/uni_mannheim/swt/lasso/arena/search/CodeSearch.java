@@ -46,6 +46,10 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.http.client.HttpClient;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import io.milvus.client.MilvusServiceClient;
+import io.milvus.param.dml.InsertParam;
+import io.milvus.grpc.*;
+import io.milvus.param.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +75,13 @@ public class CodeSearch {
 
     public CodeSearch() {
         this(SolrInstance.mavenCentral2023());
+    }
+
+    static MilvusServiceClient milvusClient() {
+        return new MilvusServiceClient(
+                ConnectParam.newBuilder()
+                        .withUri("http://192.168.0.3:19530")
+                        .build());
     }
 
     public CodeSearch(SolrInstance instance) {
@@ -108,13 +119,12 @@ public class CodeSearch {
 
         QueryResult queryResult = mavenDataSource.query(mavenQuery);
 
-        return queryResult.getImplementations().stream().map(System::new).map(ClassUnderTest::new
-        ).collect(Collectors.toList());
+        return queryResult.getImplementations().stream().map(System::new).map(ClassUnderTest::new)
+                .collect(Collectors.toList());
     }
 
     public List<ClassUnderTest> toClasses(ArenaJob arenaJob) throws IOException {
-        return arenaJob.getImplementations().stream().map(ClassUnderTest::new
-        ).collect(Collectors.toList());
+        return arenaJob.getImplementations().stream().map(ClassUnderTest::new).collect(Collectors.toList());
     }
 
     public List<ClassUnderTest> queryForClasses(String mql, int rows, String... constraints) throws IOException {
@@ -134,11 +144,12 @@ public class CodeSearch {
 
         QueryResult queryResult = mavenDataSource.query(mavenQuery);
 
-        return queryResult.getImplementations().stream().map(System::new).map(ClassUnderTest::new
-        ).collect(Collectors.toList());
+        return queryResult.getImplementations().stream().map(System::new).map(ClassUnderTest::new)
+                .collect(Collectors.toList());
     }
 
-    public List<ClassUnderTest> queryForClassesDirectly(String mql, int rows, String strategy, String... constraints) throws IOException {
+    public List<ClassUnderTest> queryForClassesDirectly(String mql, int rows, String strategy, String... constraints)
+            throws IOException {
         MavenDataSource mavenDataSource = new MavenDataSource(mavenCentralIndex);
 
         //
@@ -155,15 +166,20 @@ public class CodeSearch {
                 Collections.emptyList());
 
         return result.getCandidates().stream().map(c -> {
-            CodeUnit implementation = MavenCodeUnitUtils.toImplementation(((SolrCandidateDocument) c).getSolrDocument());
+            CodeUnit implementation = MavenCodeUnitUtils
+                    .toImplementation(((SolrCandidateDocument) c).getSolrDocument());
             implementation.setDataSource(mavenDataSource.getId());
 
             // copy over methods
             List<String> methods = new LinkedList<>();
             if (implementation.getUnitType() == CodeUnit.CodeUnitType.CLASS) {
-                methods.addAll(((SolrCandidateDocument) c).getSolrDocument().getFieldValues("methodOrigSignatureFq_sigs_exact").stream().map(s -> (String) s).collect(Collectors.toList()));
+                methods.addAll(
+                        ((SolrCandidateDocument) c).getSolrDocument().getFieldValues("methodOrigSignatureFq_sigs_exact")
+                                .stream().map(s -> (String) s).collect(Collectors.toList()));
             } else {
-                methods.addAll(((SolrCandidateDocument) c).getSolrDocument().getFieldValues("methodOrigSignatureFq_ssigs_sexact").stream().map(s -> (String) s).collect(Collectors.toList()));
+                methods.addAll(((SolrCandidateDocument) c).getSolrDocument()
+                        .getFieldValues("methodOrigSignatureFq_ssigs_sexact").stream().map(s -> (String) s)
+                        .collect(Collectors.toList()));
             }
 
             implementation.setMethods(methods);
@@ -182,9 +198,11 @@ public class CodeSearch {
      * @throws IOException
      */
     public ClassUnderTest queryForClass(String id) throws IOException {
-        CandidateQueryResult result = mavenCentralIndex.query("*:*", new SearchOptions(), new String[]{String.format("id:\"%s\"", id)}, 0, 1, Collections.emptyList());
+        CandidateQueryResult result = mavenCentralIndex.query("*:*", new SearchOptions(),
+                new String[] { String.format("id:\"%s\"", id) }, 0, 1, Collections.emptyList());
         List<ClassUnderTest> impls = result.getCandidates().stream().map(c -> {
-            CodeUnit implementation = MavenCodeUnitUtils.toImplementation(((SolrCandidateDocument) c).getSolrDocument());
+            CodeUnit implementation = MavenCodeUnitUtils
+                    .toImplementation(((SolrCandidateDocument) c).getSolrDocument());
             implementation.setDataSource(solrInstance.getName());
 
             return implementation;
@@ -210,8 +228,9 @@ public class CodeSearch {
             for (int i = 0; i < methods.size(); i++) {
                 MethodSignature method = methods.get(i);
                 if (!method.isConstructor()) {
-                    mSignatures.add(new de.uni_mannheim.swt.lasso.index.query.lql.MethodSignature("public", method.getName(),
-                            method.getInputs(), method.getOutputs().get(0)));
+                    mSignatures.add(
+                            new de.uni_mannheim.swt.lasso.index.query.lql.MethodSignature("public", method.getName(),
+                                    method.getInputs(), method.getOutputs().get(0)));
                 } else {
                     cSignatures.add(new de.uni_mannheim.swt.lasso.index.query.lql.MethodSignature("public", "<init>",
                             method.getInputs(), "void"));
@@ -230,20 +249,20 @@ public class CodeSearch {
         parseResult.setConstructors(cSignatures.stream()
                 .map(c -> {
                     LQLMethodSignature lm = new LQLMethodSignature(parseResult, c);
-                    //lm.setParent(parseResult);
+                    // lm.setParent(parseResult);
                     return lm;
                 })
                 .collect(Collectors.toList()));
         parseResult.setMethods(mSignatures.stream()
                 .map(c -> {
                     LQLMethodSignature lm = new LQLMethodSignature(parseResult, c);
-                    //lm.setParent(parseResult);
+                    // lm.setParent(parseResult);
                     return lm;
                 })
                 .collect(Collectors.toList()));
 
         parseResults.add(parseResult);
-        //}
+        // }
 
         return parseResults;
     }

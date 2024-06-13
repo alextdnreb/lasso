@@ -54,26 +54,32 @@ public class MavenCodeUnitUtils {
         i.setBytecodeName((String) doc.getFirstValue("bytecodename_s"));
         i.setGroupId((String) doc.getFirstValue("groupId"));
         i.setArtifactId((String) doc.getFirstValue("artifactId"));
-        i.setVersion((String) doc.getFirstValue("version"));
+        i.setVersion((String.valueOf(doc.getFirstValue("version"))));
         i.setScore((float) doc.getFieldValue("score"));
-        i.setContent((String) doc.getFieldValue("content"));
-        i.setHash((String) doc.getFieldValue("hash"));
-        i.setType((String) doc.getFieldValue("type"));
+        i.setContent(String.join(", ", (ArrayList) doc.getFieldValue("content")));
+        i.setHash(String.join(", ", (ArrayList) doc.getFieldValue("hash")));
+        i.setType(String.join(", ", (ArrayList) doc.getFieldValue("type")));
 
-        i.setMethods(doc.containsKey("methodOrigSignature_sigs_exact") ?
-                doc.getFieldValues("methodOrigSignature_sigs_exact")
-                        .stream().map(o -> o.toString()).filter(o -> !StringUtils.startsWith(o,"access$")).collect(Collectors.toList())
-        : Collections.emptyList());
+        i.setMethods(doc.containsKey("methodOrigSignature_sigs_exact")
+                ? doc.getFieldValues("methodOrigSignature_sigs_exact")
+                        .stream().map(o -> o.toString()).filter(o -> !StringUtils.startsWith(o, "access$"))
+                        .collect(Collectors.toList())
+                : Collections.emptyList());
 
-        i.setSuperClasses(doc.containsKey("superclass_exact") ?
-                doc.getFieldValues("superclass_exact").stream().map(s -> StringUtils.replace((String) s, "/", ".")).collect(Collectors.toList()) : null);
+        i.setSuperClasses(
+                doc.containsKey("superclass_exact")
+                        ? doc.getFieldValues("superclass_exact").stream()
+                                .map(s -> StringUtils.replace((String) s, "/", ".")).collect(Collectors.toList())
+                        : null);
 
-        i.setInterfaces(doc.containsKey("interface_exact") ?
-                doc.getFieldValues("interface_exact").stream().map(s -> StringUtils.replace((String) s, "/", ".")).collect(Collectors.toList()) : null);
+        i.setInterfaces(
+                doc.containsKey("interface_exact")
+                        ? doc.getFieldValues("interface_exact").stream()
+                                .map(s -> StringUtils.replace((String) s, "/", ".")).collect(Collectors.toList())
+                        : null);
 
-        i.setDependencies(doc.containsKey("dep_exact") ?
-                doc.getFieldValues("dep_exact").stream()
-                        .map(s -> StringUtils.replace((String) s, "/", ".")).collect(Collectors.toList()) : null);
+        i.setDependencies(doc.containsKey("dep_exact") ? doc.getFieldValues("dep_exact").stream()
+                .map(s -> StringUtils.replace((String) s, "/", ".")).collect(Collectors.toList()) : null);
 
         // add default metric(s) if necessary
         Map<String, Double> measures = new TreeMap<String, Double>();
@@ -88,7 +94,7 @@ public class MavenCodeUnitUtils {
             }
 
             // primitive
-            if(obj != null && obj.getClass().isPrimitive()) {
+            if (obj != null && obj.getClass().isPrimitive()) {
                 measures.put(m, (double) doc.getFirstValue(m));
             }
         });
@@ -102,13 +108,13 @@ public class MavenCodeUnitUtils {
         doc.keySet().stream().filter(k -> StringUtils.startsWith(k, "meta_")).forEach(m -> {
             Collection values = doc.getFieldValues(m);
 
-            if(values.size() == 1) {
+            if (values.size() == 1) {
                 Object value = values.iterator().next();
 
                 String stringValue = (String) value;
 
                 // substitute placeholders
-                if(StringUtils.contains(stringValue, "${")) {
+                if (StringUtils.contains(stringValue, "${")) {
                     Map<String, String> map = new HashMap<>();
                     map.put("project.groupId", i.getGroupId());
                     map.put("project.artifactId", i.getArtifactId());
@@ -122,38 +128,50 @@ public class MavenCodeUnitUtils {
         });
         i.setMetaData(metaData);
 
-        i.setInheritedMethods(doc.containsKey("inheritedmethodOrigSignature_sigs_exact") ?
-                doc.getFieldValues("inheritedmethodOrigSignature_sigs_exact")
-                        .stream().map(o -> o.toString()).filter(o -> !StringUtils.startsWith(o,"access$")).collect(Collectors.toList()): Collections.emptyList());
+        i.setInheritedMethods(
+                doc.containsKey("inheritedmethodOrigSignature_sigs_exact")
+                        ? doc.getFieldValues("inheritedmethodOrigSignature_sigs_exact")
+                                .stream().map(o -> o.toString()).filter(o -> !StringUtils.startsWith(o, "access$"))
+                                .collect(Collectors.toList())
+                        : Collections.emptyList());
 
-        List<SolrDocument> alternativeList = doc.containsKey("alternatives") ? (SolrDocumentList) doc.get("alternatives") : Collections.emptyList();
-        i.setAlternatives(alternativeList.stream().map(MavenCodeUnitUtils::toImplementation).collect(Collectors.toList()));
+        List<SolrDocument> alternativeList = doc.containsKey("alternatives")
+                ? (SolrDocumentList) doc.get("alternatives")
+                : Collections.emptyList();
+        i.setAlternatives(
+                alternativeList.stream().map(MavenCodeUnitUtils::toImplementation).collect(Collectors.toList()));
 
-        List<SolrDocument> cloneList = doc.containsKey("clone") ? (SolrDocumentList) doc.get("clone") : Collections.emptyList();
+        List<SolrDocument> cloneList = doc.containsKey("clone") ? (SolrDocumentList) doc.get("clone")
+                : Collections.emptyList();
         i.setClones(cloneList.stream().map(MavenCodeUnitUtils::toImplementation).collect(Collectors.toList()));
 
-        List<SolrDocument> similarList = doc.containsKey("similar") ? (SolrDocumentList) doc.get("similar") : Collections.emptyList();
+        List<SolrDocument> similarList = doc.containsKey("similar") ? (SolrDocumentList) doc.get("similar")
+                : Collections.emptyList();
         i.setSimilar(similarList.stream().map(MavenCodeUnitUtils::toImplementation).collect(Collectors.toList()));
 
         i.setClassifier((String) doc.get("classifier_s"));
 
-        String methodSignatureParamsOrderedKeywords = i.getUnitType() == CodeUnit.CodeUnitType.METHOD ? "methodSignatureParamsOrderedKeywordsFq_ssig" : "methodSignatureParamsOrderedKeywordsFq_sigs";
-        i.setMethodSignatureParamsOrderedKeywordsFq(doc.containsKey(methodSignatureParamsOrderedKeywords) ?
-                        doc.getFieldValues(methodSignatureParamsOrderedKeywords)
-                    .stream().map(Object::toString).filter(o -> !StringUtils.contains(o,"access$")).collect(Collectors.toList()): Collections.emptyList());
+        String methodSignatureParamsOrderedKeywords = i.getUnitType() == CodeUnit.CodeUnitType.METHOD
+                ? "methodSignatureParamsOrderedKeywordsFq_ssig"
+                : "methodSignatureParamsOrderedKeywordsFq_sigs";
+        i.setMethodSignatureParamsOrderedKeywordsFq(
+                doc.containsKey(methodSignatureParamsOrderedKeywords)
+                        ? doc.getFieldValues(methodSignatureParamsOrderedKeywords)
+                                .stream().map(Object::toString).filter(o -> !StringUtils.contains(o, "access$"))
+                                .collect(Collectors.toList())
+                        : Collections.emptyList());
 
         String methodNames = i.getUnitType() == CodeUnit.CodeUnitType.METHOD ? "method_fq" : "method_fqs";
-        i.setMethodNames(doc.containsKey(methodNames) ?
-                        doc.getFieldValues(methodNames)
-                    .stream().map(Object::toString).filter(o -> !StringUtils.startsWith(o,"access$")).collect(Collectors.toList()) : Collections.emptyList());
+        i.setMethodNames(doc.containsKey(methodNames) ? doc.getFieldValues(methodNames)
+                .stream().map(Object::toString).filter(o -> !StringUtils.startsWith(o, "access$"))
+                .collect(Collectors.toList()) : Collections.emptyList());
 
         boolean method = i.getUnitType() == CodeUnit.CodeUnitType.METHOD;
-        if(method) {
+        if (method) {
             i.setMethodBytecodeNames(Arrays.asList(i.getBytecodeName()));
         } else {
             String fieldName = "bytecodemethodname_ss";
-            i.setMethodBytecodeNames(doc.containsKey(fieldName) ?
-                            doc.getFieldValues(fieldName)
+            i.setMethodBytecodeNames(doc.containsKey(fieldName) ? doc.getFieldValues(fieldName)
                     .stream().map(Object::toString).collect(Collectors.toList()) : Collections.emptyList());
         }
 

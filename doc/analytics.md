@@ -1,8 +1,28 @@
-# SRMs/SRHs - Offline Software Analytics  
+# SRMs/SRHs - Software Analytics (Offline)  
 
 LSL pipeline script executions result in one or more SRMs that are stored in LASSO's distributed database. The collection of SRMs effectively results in an SRM data warehouse that we refer to as SRH (stimulus response hypercube).
 
 SRHs including SRMs are accessible in external data analytic tools in which observational records can be analyzed.
+
+## Jupyterlite Integration in LASSO (experimental)
+
+As an experimental feature, SRMs obtained as part of LSL pipeline script executions can be analyzed using _jupyterlite_. Note that jupyterlite runs entirely in the browser (including python, see https://jupyterlite.readthedocs.io/en/stable/), hence it is limited with respect to the size of data sets it can process compared to classic jupyterlab deployments that come with a python backend.
+
+![quickstart_jupyterlite_webui.png](img%2Fquickstart_jupyterlite_webui.png)
+![quickstart_jupyterlablite.png](img%2Fquickstart_jupyterlablite.png)
+
+### Export to Parquet
+
+SRM-related data can be exported to the popular Parquet format (supported by all popular analytics tools).
+
+see RESTful endpoint in [AnalyticsController.java](..%2Fservice%2Fsrc%2Fmain%2Fjava%2Fde%2Funi_mannheim%2Fswt%2Flasso%2Fservice%2Fcontroller%2Fanalytics%2FAnalyticsController.java)
+
+### Export to Jupyter Notebooks
+
+As an experimental feature, basic Jupyter notebooks can be generated automatically for individual LSL script executions. This is currently used to open SRM data in LASSO's web application using jupyterlite which allows analytics using Pandas that run entirely in the browser (limited with respect to dataset size).
+
+see RESTful endpoint in [AnalyticsController.java](..%2Fservice%2Fsrc%2Fmain%2Fjava%2Fde%2Funi_mannheim%2Fswt%2Flasso%2Fservice%2Fcontroller%2Fanalytics%2FAnalyticsController.java)
+
 
 ## Python (pandas)
 
@@ -102,3 +122,13 @@ srm <- joinSrm(jdbcUrl, script_ids)
 library(dplyr)
 ...
 ```
+
+## DuckDB (Java JDBC API) using Apache Arrow
+
+It is possible to use DuckDB in Java via JDBC (https://duckdb.org/docs/api/java) by using Apache's Ignite JDBC over Apache Arrow (https://arrow.apache.org/). 
+
+Code examples can be found in [ArrowOlap.java](..%2Fengine%2Fsrc%2Fmain%2Fjava%2Fde%2Funi_mannheim%2Fswt%2Flasso%2Fsrm%2Folap%2FArrowOlap.java)
+
+Currently, DuckDB is used in a similar way to export SRM-related data to the popular Parquet format (https://parquet.apache.org/) which can by imported by many popular analytics tools.
+
+Note that a Python API exists as well (see https://duckdb.org/docs/api/python/overview).

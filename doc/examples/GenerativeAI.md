@@ -74,3 +74,7 @@ study(name: 'GenerativeAI-Base64') {
     }
 }
 ```
+
+### APIs like OpenAI's Completions Endpoint
+
+see [gai_models.md](gai_models.md)

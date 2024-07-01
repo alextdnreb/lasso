@@ -6,6 +6,13 @@ target/
 .project
 .classpath
 .settings/
+frontend/lasso-app/node_modules
+frontend/lasso-app/node/node_modules
+frontend/lasso-app/dist/
+lasso-work
+lasso_work
+lasso_config
+lasso_crawler
 *.aux
 *.glo
 *.idx

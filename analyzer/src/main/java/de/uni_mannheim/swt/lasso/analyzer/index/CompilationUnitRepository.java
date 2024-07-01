@@ -20,6 +20,11 @@
 package de.uni_mannheim.swt.lasso.analyzer.index;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -29,11 +34,18 @@ import de.uni_mannheim.swt.lasso.analyzer.model.*;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.http.HttpEntity;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrInputDocument;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +65,7 @@ public class CompilationUnitRepository {
     /**
      * Constructor
      *
-     * @param solrClient     {@link SolrClient}
+     * @param solrClient {@link SolrClient}
      */
     public CompilationUnitRepository(SolrClient solrClient) {
         this.solrClient = solrClient;
@@ -90,14 +102,14 @@ public class CompilationUnitRepository {
      * Query for specific field, return first result
      *
      * @param query
-     *            Solr Query
+     *              Solr Query
      * @param field
-     *            SolR field
+     *              SolR field
      * @param rows
-     *            Max. no. of rows to fetch in each page iteration
+     *              Max. no. of rows to fetch in each page iteration
      * @return {@link Object} value instance
      * @throws IOException
-     *             Query failed
+     *                     Query failed
      */
 
     /**
@@ -125,6 +137,9 @@ public class CompilationUnitRepository {
 
             String origin = mavenArtifact.getSourceJar().getName();
 
+            HttpClient client = HttpClient.newHttpClient();
+            LOG.info("HTTP Client created");
+
             // transform all units to documents
             for (CompilationUnit compilationUnit : analysisResult.getCompilationUnits()) {
                 // check if accepted
@@ -132,7 +147,28 @@ public class CompilationUnitRepository {
                     // skip
                     continue;
                 }
+                // Embeddings
+                LOG.info("Processing embeddings for artifact");
 
+                String sourceCode = compilationUnit.getSourceCode();
+                String artifactName = compilationUnit.getName();
+
+                JSONObject json = new JSONObject();
+                json.put("input", sourceCode);
+                json.put("name", artifactName);
+
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create("http://172.17.48.1:5000/embedding"))
+                        .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
+                        .header("Content-Type", "application/json")
+                        .build();
+
+                LOG.info(String.format("Sending request: %s", artifactName));
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                LOG.info("Request sent");
+
+                LOG.info(response.toString());
+                // -----------------------------
                 // create document
                 SolrInputDocument document = createDocument(compilationUnit);
 
@@ -194,15 +230,17 @@ public class CompilationUnitRepository {
             }
 
             // update compilation unit with method ids
-            //updateCompilationUnitDocument(docId, methodIds);
+            // updateCompilationUnitDocument(docId, methodIds);
 
             if (LOG.isInfoEnabled()) {
                 LOG.info("Saved Maven Artifact " + uri);
             }
 
             // final commit
-            //solrClient.commit();
-        } catch (Throwable e) {
+            // solrClient.commit();
+        } catch (
+
+        Throwable e) {
             if (LOG.isWarnEnabled()) {
                 LOG.warn("Couldn't save maven artifact " + ToStringBuilder.reflectionToString(mavenArtifact), e);
             }
@@ -215,8 +253,8 @@ public class CompilationUnitRepository {
         }
 
         try {
-            if(MapUtils.isNotEmpty(meta)) {
-                for(String m : meta.keySet()) {
+            if (MapUtils.isNotEmpty(meta)) {
+                for (String m : meta.keySet()) {
                     addIfExists(document, m, meta.get(m));
                 }
             }
@@ -226,7 +264,7 @@ public class CompilationUnitRepository {
     }
 
     protected void addCustom(SolrInputDocument document) {
-        //                 addIfExists(document, "lang", "java");
+        // addIfExists(document, "lang", "java");
     }
 
     private void addMetaData(MetaData metaData, SolrInputDocument document) {
@@ -408,91 +446,100 @@ public class CompilationUnitRepository {
         }
     }
 
-//    /**
-//     * Add method to {@link SolrInputDocument}.
-//     *
-//     * @param method   {@link Method} instance
-//     * @param document {@link SolrInputDocument} instance
-//     * @deprecated #addMethod
-//     */
-//    @Deprecated
-//    private void deprecated_addMethod(Method method, SolrInputDocument document) {
-//        ArrayList<String> parameters = new ArrayList<String>();
-//        if (method.getParameters() != null) {
-//            for (Parameter parameter : method.getParameters()) {
-//                if (StringUtils.isEmpty(parameter.getType())) {
-//                    parameters.add("java.lang.Object");
-//                } else {
-//                    parameters.add(parameter.getType());
-//                }
-//            }
-//        }
-//
-//        // TODO package private??
-//        String visibility = getVisibility(method);
-//
-//        // TODO set default for null?
-//        String returnType = method.getReturnParameter() != null ? method.getReturnParameter().getType()
-//                : "java.lang.Object";
-//
-//        // shortend
-//        String returnTypeShort = StringUtils.substringAfterLast(returnType, ".");
-//        if (StringUtils.isBlank(returnTypeShort)) {
-//            returnTypeShort = returnType;
-//        }
-//
-//        List<String> parametersShort = parameters.stream().map(p -> {
-//            String shortend = StringUtils.substringAfterLast(p, ".");
-//            if (StringUtils.isBlank(shortend)) {
-//                shortend = p;
-//            }
-//
-//            return shortend;
-//        }).collect(Collectors.toList());
-//        Signature signature = new Signature(visibility, method.getName(), new ArrayList<>(parametersShort),
-//                returnTypeShort);
-//
-//        Signature signatureFq = new Signature(visibility, method.getName(), parameters, returnType);
-//
-//        // for constructors, we always index both
-//        addIfExists(document, "method_fqs", method.getName());
-//        addIfExists(document, "methodOrigSignature_sig", signature.toStringOrigSignature(false).trim());
-//        addIfExists(document, "methodOrigSignatureFq_sig", signatureFq.toStringOrigSignature(true).trim());
-//
-//        // addIfExists(document, "methodSignatureParamsOrdered_sigs",
-//        // signature.toStringParameterOrdered(false));
-//        // addIfExists(document, "methodSignatureParamsOrdered_sigs",
-//        // signature.toStringParameterOrdered(true));
-//        // addIfExists(document, "methodSignatureParamsOrderedVisibility_sigs",
-//        // signature.toStringParameterOrderedVisibility(false));
-//        // addIfExists(document, "methodSignatureParamsOrderedVisibility_sigs",
-//        // signature.toStringParameterOrderedVisibility(true));
-//
-//        // add keywords
-//        List<String> keywords = method.getJavaKeywords();
-//        String keyStr = "";
-//        if (CollectionUtils.isNotEmpty(keywords)) {
-//            keyStr = ";" + keywords.stream().map(s -> "kw_" + s).collect(Collectors.joining(";"));
-//        }
-//        addIfExists(document, "methodSignatureParamsOrderedKeywords_sig",
-//                signature.toStringParameterOrdered(false) + keyStr);
-//        addIfExists(document, "methodSignatureParamsOrderedKeywordsFq_sig",
-//                signatureFq.toStringParameterOrdered(true) + keyStr);
-//
-//        // without keywords
-//        addIfExists(document, "methodSignatureParamsOrdered_sig", signature.toStringParameterOrdered(false));
-//        addIfExists(document, "methodSignatureParamsOrderedFq_sig", signatureFq.toStringParameterOrdered(true));
-//
-//        addIfExists(document, "methodSignatureParamsOrderedSyntax_sig",
-//                signature.toStringParameterOrderedSyntax(false));
-//        addIfExists(document, "methodSignatureParamsOrderedSyntaxFq_sig",
-//                signatureFq.toStringParameterOrderedSyntax(true));
-//
-//        addIfExists(document, "methodSignatureParamsOrderedSyntaxKeywords_sig",
-//                signature.toStringParameterOrderedSyntax(false) + keyStr);
-//        addIfExists(document, "methodSignatureParamsOrderedSyntaxKeywordsFq_sig",
-//                signatureFq.toStringParameterOrderedSyntax(true) + keyStr);
-//    }
+    // /**
+    // * Add method to {@link SolrInputDocument}.
+    // *
+    // * @param method {@link Method} instance
+    // * @param document {@link SolrInputDocument} instance
+    // * @deprecated #addMethod
+    // */
+    // @Deprecated
+    // private void deprecated_addMethod(Method method, SolrInputDocument document)
+    // {
+    // ArrayList<String> parameters = new ArrayList<String>();
+    // if (method.getParameters() != null) {
+    // for (Parameter parameter : method.getParameters()) {
+    // if (StringUtils.isEmpty(parameter.getType())) {
+    // parameters.add("java.lang.Object");
+    // } else {
+    // parameters.add(parameter.getType());
+    // }
+    // }
+    // }
+    //
+    // // TODO package private??
+    // String visibility = getVisibility(method);
+    //
+    // // TODO set default for null?
+    // String returnType = method.getReturnParameter() != null ?
+    // method.getReturnParameter().getType()
+    // : "java.lang.Object";
+    //
+    // // shortend
+    // String returnTypeShort = StringUtils.substringAfterLast(returnType, ".");
+    // if (StringUtils.isBlank(returnTypeShort)) {
+    // returnTypeShort = returnType;
+    // }
+    //
+    // List<String> parametersShort = parameters.stream().map(p -> {
+    // String shortend = StringUtils.substringAfterLast(p, ".");
+    // if (StringUtils.isBlank(shortend)) {
+    // shortend = p;
+    // }
+    //
+    // return shortend;
+    // }).collect(Collectors.toList());
+    // Signature signature = new Signature(visibility, method.getName(), new
+    // ArrayList<>(parametersShort),
+    // returnTypeShort);
+    //
+    // Signature signatureFq = new Signature(visibility, method.getName(),
+    // parameters, returnType);
+    //
+    // // for constructors, we always index both
+    // addIfExists(document, "method_fqs", method.getName());
+    // addIfExists(document, "methodOrigSignature_sig",
+    // signature.toStringOrigSignature(false).trim());
+    // addIfExists(document, "methodOrigSignatureFq_sig",
+    // signatureFq.toStringOrigSignature(true).trim());
+    //
+    // // addIfExists(document, "methodSignatureParamsOrdered_sigs",
+    // // signature.toStringParameterOrdered(false));
+    // // addIfExists(document, "methodSignatureParamsOrdered_sigs",
+    // // signature.toStringParameterOrdered(true));
+    // // addIfExists(document, "methodSignatureParamsOrderedVisibility_sigs",
+    // // signature.toStringParameterOrderedVisibility(false));
+    // // addIfExists(document, "methodSignatureParamsOrderedVisibility_sigs",
+    // // signature.toStringParameterOrderedVisibility(true));
+    //
+    // // add keywords
+    // List<String> keywords = method.getJavaKeywords();
+    // String keyStr = "";
+    // if (CollectionUtils.isNotEmpty(keywords)) {
+    // keyStr = ";" + keywords.stream().map(s -> "kw_" +
+    // s).collect(Collectors.joining(";"));
+    // }
+    // addIfExists(document, "methodSignatureParamsOrderedKeywords_sig",
+    // signature.toStringParameterOrdered(false) + keyStr);
+    // addIfExists(document, "methodSignatureParamsOrderedKeywordsFq_sig",
+    // signatureFq.toStringParameterOrdered(true) + keyStr);
+    //
+    // // without keywords
+    // addIfExists(document, "methodSignatureParamsOrdered_sig",
+    // signature.toStringParameterOrdered(false));
+    // addIfExists(document, "methodSignatureParamsOrderedFq_sig",
+    // signatureFq.toStringParameterOrdered(true));
+    //
+    // addIfExists(document, "methodSignatureParamsOrderedSyntax_sig",
+    // signature.toStringParameterOrderedSyntax(false));
+    // addIfExists(document, "methodSignatureParamsOrderedSyntaxFq_sig",
+    // signatureFq.toStringParameterOrderedSyntax(true));
+    //
+    // addIfExists(document, "methodSignatureParamsOrderedSyntaxKeywords_sig",
+    // signature.toStringParameterOrderedSyntax(false) + keyStr);
+    // addIfExists(document, "methodSignatureParamsOrderedSyntaxKeywordsFq_sig",
+    // signatureFq.toStringParameterOrderedSyntax(true) + keyStr);
+    // }
 
     /**
      * Add method to {@link SolrInputDocument}.
@@ -516,8 +563,8 @@ public class CompilationUnitRepository {
 
         // source
         if (StringUtils.isNotEmpty(method.getContent())) {
-            //addIfExists(document, "content", method.getContent());
-            addIfExists(document, prefix+"hash_ss", method.getHash());
+            // addIfExists(document, "content", method.getContent());
+            addIfExists(document, prefix + "hash_ss", method.getHash());
         }
 
         // TODO package private??
@@ -560,18 +607,18 @@ public class CompilationUnitRepository {
         // }
 
         // for constructors, we always index both
-        addIfExists(document, prefix+"method_fqs", method.getName());
-        addIfExists(document, prefix+"methodOrigSignature_sigs", signature.toStringOrigSignature(false).trim());
-        addIfExists(document, prefix+"methodOrigSignatureFq_sigs", signatureFq.toStringOrigSignature(true).trim());
+        addIfExists(document, prefix + "method_fqs", method.getName());
+        addIfExists(document, prefix + "methodOrigSignature_sigs", signature.toStringOrigSignature(false).trim());
+        addIfExists(document, prefix + "methodOrigSignatureFq_sigs", signatureFq.toStringOrigSignature(true).trim());
 
         // addIfExists(document, "methodSignatureParamsOrdered_sigs",
         // signature.toStringParameterOrdered(false));
         // addIfExists(document, "methodSignatureParamsOrdered_sigs",
         // signature.toStringParameterOrdered(true));
-//        addIfExists(document, "methodSignatureParamsOrderedSyntax_sigs",
-//                signature.toStringParameterOrderedSyntax(false));
-//        addIfExists(document, "methodSignatureParamsOrderedSyntaxFq_sigs",
-//                signatureFq.toStringParameterOrderedSyntax(true));
+        // addIfExists(document, "methodSignatureParamsOrderedSyntax_sigs",
+        // signature.toStringParameterOrderedSyntax(false));
+        // addIfExists(document, "methodSignatureParamsOrderedSyntaxFq_sigs",
+        // signatureFq.toStringParameterOrderedSyntax(true));
         // addIfExists(document, "methodSignatureParamsOrderedVisibility_sigs",
         // signature.toStringParameterOrderedVisibility(false));
         // addIfExists(document, "methodSignatureParamsOrderedVisibility_sigs",
@@ -587,37 +634,38 @@ public class CompilationUnitRepository {
         keywords.add("ps" + parameters.size());
 
         // also add as metric
-        //addIfExists(document, "m_paramsize_td", parameters.size());
+        // addIfExists(document, "m_paramsize_td", parameters.size());
 
         String keyStr = "";
         if (CollectionUtils.isNotEmpty(keywords)) {
             keyStr = ";" + keywords.stream().map(s -> "kw_" + s).collect(Collectors.joining(";"));
         }
 
-        addIfExists(document, prefix+"methodSignatureParamsOrderedKeywords_sigs",
+        addIfExists(document, prefix + "methodSignatureParamsOrderedKeywords_sigs",
                 signature.toStringParameterOrdered(false) + keyStr);
-        addIfExists(document, prefix+"methodSignatureParamsOrderedKeywordsFq_sigs",
+        addIfExists(document, prefix + "methodSignatureParamsOrderedKeywordsFq_sigs",
                 signatureFq.toStringParameterOrdered(true) + keyStr);
 
         // without keywords
-        addIfExists(document, prefix+"methodSignatureParamsOrdered_sigs", signature.toStringParameterOrdered(false));
-        addIfExists(document, prefix+"methodSignatureParamsOrderedFq_sigs", signatureFq.toStringParameterOrdered(true));
+        addIfExists(document, prefix + "methodSignatureParamsOrdered_sigs", signature.toStringParameterOrdered(false));
+        addIfExists(document, prefix + "methodSignatureParamsOrderedFq_sigs",
+                signatureFq.toStringParameterOrdered(true));
 
-        addIfExists(document, prefix+"methodSignatureParamsOrderedSyntax_sigs",
+        addIfExists(document, prefix + "methodSignatureParamsOrderedSyntax_sigs",
                 signature.toStringParameterOrderedSyntax(false));
-        addIfExists(document, prefix+"methodSignatureParamsOrderedSyntaxFq_sigs",
+        addIfExists(document, prefix + "methodSignatureParamsOrderedSyntaxFq_sigs",
                 signatureFq.toStringParameterOrderedSyntax(true));
 
-        addIfExists(document, prefix+"methodSignatureParamsOrderedSyntaxKeywords_sigs",
+        addIfExists(document, prefix + "methodSignatureParamsOrderedSyntaxKeywords_sigs",
                 signature.toStringParameterOrderedSyntax(false) + keyStr);
-        addIfExists(document, prefix+"methodSignatureParamsOrderedSyntaxKeywordsFq_sigs",
+        addIfExists(document, prefix + "methodSignatureParamsOrderedSyntaxKeywordsFq_sigs",
                 signatureFq.toStringParameterOrderedSyntax(true) + keyStr);
 
         // new
-        //addNewFields(document, method);
+        // addNewFields(document, method);
 
         // bytecode sigs
-        addIfExists(document, prefix+"bytecodemethodname_ss", method.getByteCodeName());
+        addIfExists(document, prefix + "bytecodemethodname_ss", method.getByteCodeName());
     }
 
     /**

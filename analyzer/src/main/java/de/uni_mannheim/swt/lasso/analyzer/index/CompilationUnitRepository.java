@@ -45,6 +45,7 @@ import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrInputDocument;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,11 +155,16 @@ public class CompilationUnitRepository {
                 String artifactName = compilationUnit.getName();
 
                 JSONObject json = new JSONObject();
-                json.put("input", sourceCode);
-                json.put("name", artifactName);
+                json.put("code", sourceCode);
+                addToJsonIfExists(json, "groupId", mavenArtifact.getGroupId());
+                addToJsonIfExists(json, "artifactId", mavenArtifact.getArtifactId());
+                addToJsonIfExists(json, "version", mavenArtifact.getVersion());
+                addToJsonIfExists(json, "name", artifactName);
+                addToJsonIfExists(json, "packageName", compilationUnit.getPackageName());
+                
 
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://172.17.48.1:5000/embedding"))
+                        .uri(URI.create("http://10.13.103.70:5000/embedding"))
                         .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
                         .header("Content-Type", "application/json")
                         .build();
@@ -431,6 +437,16 @@ public class CompilationUnitRepository {
 
         // metrics
 
+    }
+
+    protected static void addToJsonIfExists(JSONObject json, String name, Object value) {
+        if (value != null) {
+            try {
+                json.put(name, value);
+            } catch (JSONException e) {
+                return;
+            }
+        }
     }
 
     /**

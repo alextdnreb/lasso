@@ -76,6 +76,28 @@
                 
             
               </mat-expansion-panel>
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    Search type
+                  </mat-panel-title>
+                  <mat-panel-description>
+                    Set your search type
+                    <!-- <mat-icon>account_circle</mat-icon>-->
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+            
+                <mat-form-field>
+                  <mat-label>Search Type</mat-label>
+                  <mat-select [(ngModel)]="embeddingSearch">
+                      <mat-option *ngFor="let s of searchStrategies" [value]="s">
+                      {{s}}
+                      </mat-option>
+                  </mat-select>
+                </mat-form-field>
+                
+            
+              </mat-expansion-panel>
 
               <mat-expansion-panel>
                   <mat-expansion-panel-header>
@@ -101,13 +123,13 @@
                   </mat-form-field>
                   
                   <mat-form-field>
-                      <mat-label>Strategy</mat-label>
-                      <mat-select [(ngModel)]="strategy">
-                          <mat-option *ngFor="let s of strategies" [value]="s">
-                          {{s}}
-                          </mat-option>
-                      </mat-select>
-                      </mat-form-field>
+                    <mat-label>Strategy</mat-label>
+                    <mat-select [(ngModel)]="strategy">
+                        <mat-option *ngFor="let s of strategies" [value]="s">
+                        {{s}}
+                        </mat-option>
+                    </mat-select>
+                  </mat-form-field>
               
                 </mat-expansion-panel>
 

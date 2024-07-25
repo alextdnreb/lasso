@@ -141,10 +141,14 @@ study(name: 'CodeSearch-TDCS-{{abstraction_name}}') {
 
   filters: string[] = [];
   filter: string = '';
+  
+  searchStrategies: string[] = ["index-based", "embedding-based"]
+  
+  embeddingSearch: string = this.searchStrategies[0]
+  
   rows: number = 10;
 
   datasource: string | undefined;
-
   strategies: string[] = ['class-simple'];
   strategy: string = this.strategies[0];
 
@@ -358,7 +362,13 @@ study(name: 'CodeSearch-TDCS-{{abstraction_name}}') {
       this.router.navigate(
         ['/search'],
         {
-          queryParams: { lql: lqlCode, filter: searchFilters, strategy: this.strategy, datasource: this.datasource },
+          queryParams: { 
+            lql: lqlCode, 
+            filter: searchFilters, 
+            strategy: this.strategy, 
+            datasource: this.datasource, 
+            embeddingSearch: this.embeddingSearch == "embedding-based"
+          },
           queryParamsHandling: 'merge' }
         );
     }

@@ -330,6 +330,20 @@ export class LassoApiServiceService {
    * 
    */
   queryImplementationsForDataSource(dataSource: string, request: SearchQueryRequest) {
+    console.log(request)
+
+    if (request.embeddingSearch) {
+      console.log("Querying using embedding search");
+      return this.http.post<any>(`http://10.13.103.70:5000/search`, {"input": request.query})
+        .pipe(map(response => {
+            // do something
+
+            console.log(response)
+
+            return response
+        }))
+    } 
+    console.log("Querying using index-based search")
     return this.http.post<any>(`${environment.apiUrl}/api/v1/lasso/datasource/${dataSource}/query`, request)
         .pipe(map(response => {
             // do something

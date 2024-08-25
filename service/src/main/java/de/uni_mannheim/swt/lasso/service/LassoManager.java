@@ -332,13 +332,13 @@ public class LassoManager {
 
         if (StringUtils.isNotEmpty(lslExecutionResult.getScript().getEmail()) && notificationService != null) {
             Notification notification = NotificationFactory.onScriptExecutionFinished(lslExecutionResult, workspace);
-            try {
-                notificationService.send(notification);
-            } catch (IOException e) {
-                if (LOG.isWarnEnabled()) {
-                    LOG.warn("Sending email notification failed", e);
-                }
-            }
+            // try {
+            //     // notificationService.send(notification);
+            // } catch (IOException e) {
+            //     if (LOG.isWarnEnabled()) {
+            //         LOG.warn("Sending email notification failed", e);
+            //     }
+            // }
         }
     }
 
@@ -350,13 +350,13 @@ public class LassoManager {
 
         if (StringUtils.isNotEmpty(script.getEmail()) && notificationService != null) {
             Notification notification = NotificationFactory.onScriptExecutionFailed(script, workspace);
-            try {
-                notificationService.send(notification);
-            } catch (IOException e) {
-                if (LOG.isWarnEnabled()) {
-                    LOG.warn("Sending email notification failed", e);
-                }
-            }
+            // try {
+            //     // notificationService.send(notification);
+            // } catch (IOException e) {
+            //     if (LOG.isWarnEnabled()) {
+            //         LOG.warn("Sending email notification failed", e);
+            //     }
+            // }
         }
     }
 

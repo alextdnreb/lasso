@@ -12,6 +12,7 @@ frontend/lasso-app/dist/
 lasso-work
 lasso_work
 lasso_config
+.DS_Store
 lasso_crawler
 *.aux
 *.glo

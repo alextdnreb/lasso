@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import de.uni_mannheim.swt.lasso.analyzer.batch.processor.AnalysisResult;
 import de.uni_mannheim.swt.lasso.analyzer.batch.reader.MavenArtifact;
 import de.uni_mannheim.swt.lasso.analyzer.model.*;
+
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -43,6 +44,7 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrInputDocument;
 import org.json.JSONException;
@@ -148,7 +150,10 @@ public class CompilationUnitRepository {
                     // skip
                     continue;
                 }
-                // Embeddings
+
+                // generate document ID
+                String id = UUID.randomUUID().toString();
+
                 LOG.info("Processing embeddings for artifact");
 
                 String sourceCode = compilationUnit.getSourceCode();
@@ -156,15 +161,10 @@ public class CompilationUnitRepository {
 
                 JSONObject json = new JSONObject();
                 json.put("code", sourceCode);
-                addToJsonIfExists(json, "groupId", mavenArtifact.getGroupId());
-                addToJsonIfExists(json, "artifactId", mavenArtifact.getArtifactId());
-                addToJsonIfExists(json, "version", mavenArtifact.getVersion());
-                addToJsonIfExists(json, "name", artifactName);
-                addToJsonIfExists(json, "packageName", compilationUnit.getPackageName());
-                
+                json.put("id", id);                
 
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://10.13.103.70:5000/embedding"))
+                        .uri(URI.create("http://192.168.1.4:4999/embedding"))
                         .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
                         .header("Content-Type", "application/json")
                         .build();
@@ -177,9 +177,6 @@ public class CompilationUnitRepository {
                 // -----------------------------
                 // create document
                 SolrInputDocument document = createDocument(compilationUnit);
-
-                // generate ID
-                String id = UUID.randomUUID().toString();
 
                 addIfExists(document, "id", id);
 
@@ -437,16 +434,6 @@ public class CompilationUnitRepository {
 
         // metrics
 
-    }
-
-    protected static void addToJsonIfExists(JSONObject json, String name, Object value) {
-        if (value != null) {
-            try {
-                json.put(name, value);
-            } catch (JSONException e) {
-                return;
-            }
-        }
     }
 
     /**

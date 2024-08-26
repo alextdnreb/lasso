@@ -19,26 +19,29 @@
  */
 package de.uni_mannheim.swt.lasso.service.controller.ds;
 
-import de.uni_mannheim.swt.lasso.cluster.ClusterEngine;
-import de.uni_mannheim.swt.lasso.core.dto.*;
-import de.uni_mannheim.swt.lasso.index.CandidateQueryResult;
-import de.uni_mannheim.swt.lasso.index.SearchOptions;
-import de.uni_mannheim.swt.lasso.index.repo.SolrCandidateDocument;
-import de.uni_mannheim.swt.lasso.core.datasource.DataSource;
-import de.uni_mannheim.swt.lasso.core.model.CodeUnit;
-import de.uni_mannheim.swt.lasso.datasource.maven.MavenDataSource;
-import de.uni_mannheim.swt.lasso.datasource.maven.MavenCodeUnitUtils;
-import de.uni_mannheim.swt.lasso.datasource.maven.support.MavenCentralIndex;
-import de.uni_mannheim.swt.lasso.engine.LassoConfiguration;
-import de.uni_mannheim.swt.lasso.service.controller.BaseApi;
-import de.uni_mannheim.swt.lasso.service.controller.ds.query.QueryStrategy;
-import de.uni_mannheim.swt.lasso.service.controller.ds.query.ScriptQueryStrategy;
-import de.uni_mannheim.swt.lasso.service.controller.ds.query.TextualQueryStrategy;
-import de.uni_mannheim.swt.lasso.service.dto.UserInfo;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,14 +50,36 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import de.uni_mannheim.swt.lasso.cluster.ClusterEngine;
+import de.uni_mannheim.swt.lasso.core.datasource.DataSource;
+import de.uni_mannheim.swt.lasso.core.dto.DataSourceResponse;
+import de.uni_mannheim.swt.lasso.core.dto.ImplementationRequest;
+import de.uni_mannheim.swt.lasso.core.dto.ImplementationResponse;
+import de.uni_mannheim.swt.lasso.core.dto.SearchQueryRequest;
+import de.uni_mannheim.swt.lasso.core.dto.SearchRequestResponse;
+import de.uni_mannheim.swt.lasso.core.model.CodeUnit;
+import de.uni_mannheim.swt.lasso.datasource.maven.MavenCodeUnitUtils;
+import de.uni_mannheim.swt.lasso.datasource.maven.MavenDataSource;
+import de.uni_mannheim.swt.lasso.datasource.maven.support.MavenCentralIndex;
+import de.uni_mannheim.swt.lasso.engine.LassoConfiguration;
+import de.uni_mannheim.swt.lasso.index.CandidateQueryResult;
+import de.uni_mannheim.swt.lasso.index.SearchOptions;
+import de.uni_mannheim.swt.lasso.index.repo.SolrCandidateDocument;
+import de.uni_mannheim.swt.lasso.service.controller.BaseApi;
+import de.uni_mannheim.swt.lasso.service.controller.ds.query.QueryStrategy;
+import de.uni_mannheim.swt.lasso.service.controller.ds.query.ScriptQueryStrategy;
+import de.uni_mannheim.swt.lasso.service.controller.ds.query.TextualQueryStrategy;
+import de.uni_mannheim.swt.lasso.service.dto.UserInfo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -82,6 +107,14 @@ public class DataSourceController extends BaseApi {
 
     @Autowired
     ClusterEngine clusterEngine;
+
+    private QueryStrategy decideQueryStrategy(SearchQueryRequest request) {
+        if(StringUtils.isNotBlank(request.getExecutionId())) {
+            return new ScriptQueryStrategy(clusterEngine, lassoConfiguration);
+        } 
+        // classic search
+        return new TextualQueryStrategy(clusterEngine, lassoConfiguration);
+    }
 
     @Operation(summary = "Get implementations", description = "Get implementations")
     @RequestMapping(value = "/implementations", method = RequestMethod.POST, consumes = "application/json;charset=UTF-8", produces = "application/json;charset=UTF-8")
@@ -180,16 +213,84 @@ public class DataSourceController extends BaseApi {
         SearchRequestResponse response = new SearchRequestResponse();
 
         try {
-            // just show systems of given script execution
-            if(StringUtils.isNotBlank(request.getExecutionId())) {
-                //
-                QueryStrategy queryStrategy = new ScriptQueryStrategy(clusterEngine, lassoConfiguration);
-                response = queryStrategy.query(request, dataSource);
-            } else {
-                // classic search
-                QueryStrategy queryStrategy = new TextualQueryStrategy(clusterEngine, lassoConfiguration);
-                response = queryStrategy.query(request, dataSource);
+            QueryStrategy queryStrategy = decideQueryStrategy(request);
+            response = queryStrategy.query(request, dataSource);
+            
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Returning query Implementations response to '{}'",
+                        userInfo.getRemoteIpAddress());
             }
+
+            // 200
+            return ResponseEntity.ok(response);
+        } catch (Throwable e) {
+            if (LOG.isWarnEnabled()) {
+                LOG.warn(String.format("Could not get implementations response"), e);
+            }
+
+            // bad request
+            throw new RuntimeException(String.format("Could not get implementations response"), e);
+        }
+    }
+
+    private List<String> getEmbeddingsResponse(SearchQueryRequest request) {
+        HttpClient client = HttpClient.newHttpClient();
+        JSONObject json = new JSONObject();
+        json.put("input", request.getQuery());
+        LOG.info(String.format("Querying embeddings for request"));
+        HttpRequest embeddingRequest = HttpRequest.newBuilder()
+                .uri(URI.create("http://192.168.1.4:4999/search"))
+                .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
+                .header("Content-Type", "application/json")
+                .build();
+
+        try {
+            HttpResponse<String> embeddingResponse = client.send(embeddingRequest, HttpResponse.BodyHandlers.ofString());
+            // Parse the response body to JSON using Jackson
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode jsonResponse = objectMapper.readTree(embeddingResponse.body());
+
+            // Extract solr_ids
+            JsonNode implementations = jsonResponse.get("implementations");
+
+            String solrIds = StreamSupport.stream(implementations.spliterator(), false)
+            .map(node -> node.get("solr_id").asText())
+            .collect(Collectors.joining(" ", "(", ")"));
+
+            LOG.info("Request sent" + solrIds);
+
+            List<String> idFilter = new ArrayList();
+            idFilter.add("id:"+solrIds);    
+
+            return idFilter;
+        }
+        catch (Throwable e) {
+            LOG.warn(String.format("Could not get embedding response"), e);
+            throw new RuntimeException(String.format("Could not get embedding response"), e);
+        }
+    }
+
+    @Operation(summary = "Query implementations using embedding-search", description = "Query implementations using embedding-search")
+    @RequestMapping(value = "/{dataSource}/query/embedding", method = RequestMethod.POST, consumes = "application/json;charset=UTF-8", produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<SearchRequestResponse> queryBasedOnEmbedding(
+            @RequestBody SearchQueryRequest request,
+            @PathVariable("dataSource") String dataSource,
+            /*@ApiIgnore*/ @AuthenticationPrincipal UserDetails userDetails,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse) {
+        // get user details
+        UserInfo userInfo = getUserInfo(httpServletRequest, userDetails);
+
+        SearchRequestResponse response = new SearchRequestResponse();
+
+        try {
+            List<String> idFilter = getEmbeddingsResponse(request);
+            List<String> currentFilters = request.getFilters();
+            request.setFilters(Stream.concat(currentFilters.stream(), idFilter.stream()).collect(Collectors.toList()));
+
+            QueryStrategy queryStrategy = decideQueryStrategy(request);
+            response = queryStrategy.query(request, dataSource);
 
             if (LOG.isInfoEnabled()) {
                 LOG.info("Returning query Implementations response to '{}'",
@@ -207,6 +308,8 @@ public class DataSourceController extends BaseApi {
             throw new RuntimeException(String.format("Could not get implementations response"), e);
         }
     }
+
+
 
     @Operation(summary = "Data sources Info", description = "Get info about available data sources")
     @RequestMapping(value = "/info", method = RequestMethod.GET, produces = "application/json;charset=UTF-8")

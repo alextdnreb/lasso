@@ -105,7 +105,7 @@ public class ActionManager {
 
     public boolean isLocalAction(String type) {
         Class<? extends DefaultAction> clazz = registry.get(type);
-        Validate.notNull(clazz, "Given type unknown '%s'", clazz);
+        Validate.notNull(clazz, "Given type unknown '%s'", type);
 
         return clazz.getAnnotation(Local.class) != null;
     }

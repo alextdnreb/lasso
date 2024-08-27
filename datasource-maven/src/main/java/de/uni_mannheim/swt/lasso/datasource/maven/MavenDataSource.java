@@ -86,8 +86,8 @@ public class MavenDataSource extends DataSource {
         // setup post filter
         CandidateFilterManager candidateFilterManager = new CandidateFilterManager();
         searchOptions.setCandidateFilter(candidateFilterManager);
-
         List<String> constraints = new ArrayList<>(mavenQuery.getConstraints());
+        LOG.info("Querying with " + constraints.size() + " constraints");
 
         // candidate filter?
         if(mavenQuery.isStrictTypeFilter()) {

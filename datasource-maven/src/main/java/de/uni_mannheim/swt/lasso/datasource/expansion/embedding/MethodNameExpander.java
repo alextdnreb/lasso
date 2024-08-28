@@ -19,12 +19,12 @@
  */
 package de.uni_mannheim.swt.lasso.datasource.expansion.embedding;
 
+import java.util.LinkedHashMap;
+
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.LinkedHashMap;
 
 /**
  * Expand method names based on Word Embeddings (e.g., {@link Word2VecRaw}).
@@ -35,18 +35,17 @@ public class MethodNameExpander {
 
     private static final Logger LOG = LoggerFactory.getLogger(MethodNameExpander.class);
 
-    private Word2VecRaw word2VecRaw;
+    private MethodVecsFromDatabase vecsFromDatabase;
 
     private static MethodNameExpander instance;
 
-    private MethodNameExpander(Word2VecRaw word2VecRaw) {
-        this.word2VecRaw = word2VecRaw;
+    private MethodNameExpander(MethodVecsFromDatabase vecsFromDatabase) {
+        this.vecsFromDatabase = vecsFromDatabase;
     }
 
     public static MethodNameExpander getInstance() {
         if(instance == null) {
-            String model = System.getProperty("models.embedding.code2vec");
-            instance = new MethodNameExpander(new Word2VecRaw(model));
+            instance = new MethodNameExpander(new MethodVecsFromDatabase());
         }
 
         return instance;
@@ -70,7 +69,7 @@ public class MethodNameExpander {
 
         LinkedHashMap<String, Double> nearestMethodNames = null;
         try {
-            nearestMethodNames = word2VecRaw.getNearestWords(name, topN);
+            nearestMethodNames = vecsFromDatabase.getNearestWords(name, topN);
         } catch (Throwable e) {
             nearestMethodNames = new LinkedHashMap<>();
         }

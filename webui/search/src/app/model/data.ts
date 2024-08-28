@@ -22,7 +22,7 @@ export class TextualSearch {
     lql: string;
     filters: string[];
     strategy: string;
-    embeddingSearch: boolean;
+    searchType: string;
 }
 
 export class OracleDescription {

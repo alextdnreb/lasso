@@ -142,9 +142,9 @@ study(name: 'CodeSearch-TDCS-{{abstraction_name}}') {
   filters: string[] = [];
   filter: string = '';
   
-  searchStrategies: string[] = ["index-based", "embedding-based"]
+  searchStrategies: string[] = ["index-based", "embedding-based", "fusion"]
   
-  embeddingSearch: string = this.searchStrategies[0]
+  searchType: string = this.searchStrategies[0]
   
   rows: number = 10;
 
@@ -367,7 +367,7 @@ study(name: 'CodeSearch-TDCS-{{abstraction_name}}') {
             filter: searchFilters, 
             strategy: this.strategy, 
             datasource: this.datasource, 
-            embeddingSearch: this.embeddingSearch == "embedding-based"
+            searchType: this.searchType
           },
           queryParamsHandling: 'merge' }
         );

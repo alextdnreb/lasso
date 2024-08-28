@@ -19,6 +19,10 @@
  */
 package de.uni_mannheim.swt.lasso.analyzer.index;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,11 +32,13 @@ import de.uni_mannheim.swt.lasso.analyzer.model.ClassType;
 import de.uni_mannheim.swt.lasso.analyzer.model.CompilationUnit;
 import de.uni_mannheim.swt.lasso.analyzer.model.Method;
 import de.uni_mannheim.swt.lasso.analyzer.model.Parameter;
+
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.common.SolrInputDocument;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,6 +111,9 @@ public class MethodRepository {
 
             List<String> methodIds = new LinkedList<>();
 
+            HttpClient client = HttpClient.newHttpClient();
+            LOG.info("HTTP Client created");
+
             // methods
             if (CollectionUtils.isNotEmpty(compilationUnit.getMethods())) {
 
@@ -164,6 +173,22 @@ public class MethodRepository {
 
                     // save
                     solrClient.add(document);
+
+                    JSONObject json = new JSONObject();
+                    json.put("code", method.getName());
+                    json.put("id", method.getName());                
+
+                    HttpRequest request = HttpRequest.newBuilder()
+                            .uri(URI.create("http://192.168.1.4:4999/embedding"))
+                            .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
+                            .header("Content-Type", "application/json")
+                            .build();
+
+                    LOG.info(String.format("Sending request: %s", method.getName()));
+                    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                    LOG.info("Request sent");
+
+                    LOG.info(response.toString());
                 }
             }
 

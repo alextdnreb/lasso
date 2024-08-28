@@ -271,9 +271,9 @@ public class DataSourceController extends BaseApi {
     }
 
     @Operation(summary = "Query implementations using embedding-search", description = "Query implementations using embedding-search")
-    @RequestMapping(value = "/{dataSource}/query/embedding", method = RequestMethod.POST, consumes = "application/json;charset=UTF-8", produces = "application/json;charset=UTF-8")
+    @RequestMapping(value = "/{dataSource}/query/fusion", method = RequestMethod.POST, consumes = "application/json;charset=UTF-8", produces = "application/json;charset=UTF-8")
     @ResponseBody
-    public ResponseEntity<SearchRequestResponse> queryBasedOnEmbedding(
+    public ResponseEntity<SearchRequestResponse> fusionQuery(
             @RequestBody SearchQueryRequest request,
             @PathVariable("dataSource") String dataSource,
             /*@ApiIgnore*/ @AuthenticationPrincipal UserDetails userDetails,
@@ -309,6 +309,45 @@ public class DataSourceController extends BaseApi {
         }
     }
 
+    @Operation(summary = "Query implementations using embedding-search", description = "Query implementations using embedding-search")
+    @RequestMapping(value = "/{dataSource}/query/semantic", method = RequestMethod.POST, consumes = "application/json;charset=UTF-8", produces = "application/json;charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<SearchRequestResponse> semanticQuery(
+            @RequestBody SearchQueryRequest request,
+            @PathVariable("dataSource") String dataSource,
+            /*@ApiIgnore*/ @AuthenticationPrincipal UserDetails userDetails,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse) {
+        // get user details
+        UserInfo userInfo = getUserInfo(httpServletRequest, userDetails);
+
+        SearchRequestResponse response = new SearchRequestResponse();
+
+        try {
+            List<String> idFilter = getEmbeddingsResponse(request);
+            List<String> currentFilters = request.getFilters();
+            request.setFilters(Stream.concat(currentFilters.stream(), idFilter.stream()).collect(Collectors.toList()));
+
+            QueryStrategy queryStrategy = decideQueryStrategy(request);
+            request.setQuery("*:*");
+            response = queryStrategy.query(request, dataSource);
+
+            if (LOG.isInfoEnabled()) {
+                LOG.info("Returning query Implementations response to '{}'",
+                        userInfo.getRemoteIpAddress());
+            }
+
+            // 200
+            return ResponseEntity.ok(response);
+        } catch (Throwable e) {
+            if (LOG.isWarnEnabled()) {
+                LOG.warn(String.format("Could not get implementations response"), e);
+            }
+
+            // bad request
+            throw new RuntimeException(String.format("Could not get implementations response"), e);
+        }
+    }
 
 
     @Operation(summary = "Data sources Info", description = "Get info about available data sources")

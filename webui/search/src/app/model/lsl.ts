@@ -102,7 +102,7 @@ export class SearchQueryRequest {
     query: string
     filters: string[]
     sortyBy: string[]
-    embeddingSearch: boolean
+    searchType: string
 
     oracleFilters: any;
 

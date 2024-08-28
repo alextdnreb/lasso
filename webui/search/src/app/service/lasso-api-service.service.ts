@@ -334,11 +334,20 @@ export class LassoApiServiceService {
 
 
 
-    if (request.embeddingSearch) {
-      console.log("Querying using embedding search");
-      queryUrl += "/embedding"
-    } else {
-      console.log("Querying using index-based search")
+    switch(request.searchType) {
+      case "fusion": {
+        console.log("Querying using fusion search");
+        queryUrl += "/fusion"
+        break;
+      }
+      case "embedding-based": {
+        console.log("Querying using semantic search");
+        queryUrl += "/semantic"
+        break;
+      }
+      default: {
+        console.log("Querying using index-based search")
+      }
     }
 
     return this.http.post<any>(queryUrl, request)

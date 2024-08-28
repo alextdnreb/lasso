@@ -112,7 +112,7 @@ export class ResultsComponent implements AfterViewChecked {
       let filters = paramMap.getAll('filter')
       let strategy = paramMap.get('strategy')
       let datasource = paramMap.get('datasource')
-      const embeddingSearch = paramMap.get('embeddingSearch') == "true"
+      const searchType = paramMap.get('searchType')
       this.lassoDataSource = datasource
 
       if(lqlCode) {
@@ -121,7 +121,7 @@ export class ResultsComponent implements AfterViewChecked {
         textualSearchQuery.lql = lqlCode
         textualSearchQuery.filters = filters
         textualSearchQuery.strategy = strategy
-        textualSearchQuery.embeddingSearch = embeddingSearch
+        textualSearchQuery.searchType = searchType
 
         this.textualSearch = textualSearchQuery
 
@@ -270,7 +270,7 @@ export class ResultsComponent implements AfterViewChecked {
       request.query = this.textualSearch.lql
       request.filters = this.textualSearch.filters
       request.strategy = this.textualSearch.strategy
-      request.embeddingSearch = this.textualSearch.embeddingSearch
+      request.searchType = this.textualSearch.searchType
     } else {
       // set executionId
       request.executionId = this.executionId;
@@ -291,7 +291,7 @@ export class ResultsComponent implements AfterViewChecked {
     console.log(JSON.stringify(request));
 
     // execute
-    let searchResults = this.lassoApiService.queryImplementationsForDataSource(this.lassoDataSource, request)
+    this.lassoApiService.queryImplementationsForDataSource(this.lassoDataSource, request)
     .pipe(first())
     .subscribe({
       next: (res) => { this.dataSource.data = this.sortImplementationsToArray(res.implementations); this.isLoading = false;

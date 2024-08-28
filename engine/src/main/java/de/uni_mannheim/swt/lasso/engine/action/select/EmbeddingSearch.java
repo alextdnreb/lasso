@@ -79,13 +79,13 @@ import tech.tablesaw.api.Table;
  *
  * @author Marcus Kessel
  */
-@LassoAction(desc = "Select Implementations (Query/Find/Filter) from Data Sources")
+@LassoAction(desc = "Select Implementations (Query/Find/Filter) from Data Sources via fusion search")
 @Stable
 @Local
-public class SelectEmbedding extends DefaultAction {
+public class EmbeddingSearch extends DefaultAction {
 
     private static final Logger LOG = LoggerFactory
-            .getLogger(SelectEmbedding.class);
+            .getLogger(EmbeddingSearch.class);
 
     public static final String FROM_EXECUTION_ID = "from.execution.id";
 
@@ -247,14 +247,16 @@ public class SelectEmbedding extends DefaultAction {
                 // do query from data source
                 QueryResult queryResult = null;
                 try {
-                    queryResult = dataSource.query(queryModel);
-
                     // embedding filter is only supported for Maven Queries
                     if(!(queryModel instanceof MavenQuery)) {
+                        queryResult = dataSource.query(queryModel);
                         queryReport.setNumFound(queryResult.getNumFound());
                     } else {
+                        MavenQuery mavenQuery = (MavenQuery) queryModel;
+                        queryResult = dataSource.query(queryModel);
+                        mavenQuery.setQuery("*:*");
                         LOG.info("Number of results before embedding filter: " + queryResult.getNumFound());
-                        List<String> embeddingFilter = getEmbeddingsResponse((MavenQuery)queryModel);
+                        List<String> embeddingFilter = getEmbeddingsResponse(mavenQuery);
                         List<CodeUnit> filteredImplementations = queryResult.getImplementations().stream()
                         .filter(impl -> embeddingFilter.contains(impl.getId()))
                         .collect(Collectors.toList());

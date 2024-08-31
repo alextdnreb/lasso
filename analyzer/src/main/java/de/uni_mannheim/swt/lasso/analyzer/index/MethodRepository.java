@@ -176,10 +176,11 @@ public class MethodRepository {
 
                     JSONObject json = new JSONObject();
                     json.put("code", method.getName());
-                    json.put("id", method.getName());                
+                    json.put("id", mid);                
+                    json.put("name", method.getName());                
 
                     HttpRequest request = HttpRequest.newBuilder()
-                            .uri(URI.create("http://192.168.1.4:4999/embedding"))
+                            .uri(URI.create("http://10.13.77.232:4999/methodEmbedding"))
                             .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
                             .header("Content-Type", "application/json")
                             .build();

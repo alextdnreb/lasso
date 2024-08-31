@@ -110,7 +110,7 @@ public class Fusion extends DefaultAction {
         json.put("input", query.getQuery());
         LOG.info(String.format("Querying embeddings for request"));
         HttpRequest embeddingRequest = HttpRequest.newBuilder()
-                .uri(URI.create("http://192.168.1.4:4999/search"))
+                .uri(URI.create("http://10.13.77.232:4999/search"))
                 .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
                 .header("Content-Type", "application/json")
                 .build();

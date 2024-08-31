@@ -162,9 +162,10 @@ public class CompilationUnitRepository {
                 JSONObject json = new JSONObject();
                 json.put("code", sourceCode);
                 json.put("id", id);                
+                json.put("name", artifactName);
 
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("http://192.168.1.4:4999/embedding"))
+                        .uri(URI.create("http://10.13.77.232:4999/embedding"))
                         .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
                         .header("Content-Type", "application/json")
                         .build();

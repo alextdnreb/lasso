@@ -110,7 +110,7 @@ public class EmbeddingSearch extends DefaultAction {
         json.put("input", query.getQuery());
         LOG.info(String.format("Querying embeddings for request"));
         HttpRequest embeddingRequest = HttpRequest.newBuilder()
-                .uri(URI.create("http://192.168.1.4:4999/search"))
+                .uri(URI.create("http://10.13.77.232:4999/search"))
                 .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
                 .header("Content-Type", "application/json")
                 .build();
@@ -253,8 +253,8 @@ public class EmbeddingSearch extends DefaultAction {
                         queryReport.setNumFound(queryResult.getNumFound());
                     } else {
                         MavenQuery mavenQuery = (MavenQuery) queryModel;
-                        queryResult = dataSource.query(queryModel);
                         mavenQuery.setQuery("*:*");
+                        queryResult = dataSource.query(queryModel);
                         LOG.info("Number of results before embedding filter: " + queryResult.getNumFound());
                         List<String> embeddingFilter = getEmbeddingsResponse(mavenQuery);
                         List<CodeUnit> filteredImplementations = queryResult.getImplementations().stream()

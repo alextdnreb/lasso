@@ -8,7 +8,8 @@ Important: Possible security risks are not taken into consideration, so do not e
 
 ## Requirements / Assumptions
 
-* Linux (tested using Ubuntu 22.04 LTS) - MacOS and Windows is untested
+* Linux (tested using Ubuntu 22.04 LTS) - For macOS: enable experimental host networking; For Windows: Install via WSL2 and [localhostforwarding](https://learn.microsoft.com/en-us/windows/wsl/wsl-config)
+
 * a working docker installation, preferably running as a non-root user (e.g., https://docs.docker.com/engine/install/ubuntu/)
 * Java JDK >= 11 (any free JDK distribution should work)
 * the frontend modules (webapps using angular) are built with nodejs/npm (retrieved automatically using a Maven plugin (https://github.com/eirslett/frontend-maven-plugin/)

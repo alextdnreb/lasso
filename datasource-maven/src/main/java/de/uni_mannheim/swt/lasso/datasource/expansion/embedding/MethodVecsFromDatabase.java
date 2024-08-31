@@ -49,7 +49,7 @@ public class MethodVecsFromDatabase {
         json.put("input", queryWord);
         LOG.info(String.format("Querying embeddings for request"));
         HttpRequest embeddingRequest = HttpRequest.newBuilder()
-        .uri(URI.create("http://192.168.1.4:4999/search"))
+        .uri(URI.create("http://10.13.77.232:4999/searchMethods"))
         .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
         .header("Content-Type", "application/json")
         .build();
@@ -63,7 +63,7 @@ public class MethodVecsFromDatabase {
 
             Map<String, Double> similarityMap = StreamSupport.stream(implementations.spliterator(), false)
                 .collect(Collectors.toMap(
-                    node -> node.get("solr_id").asText(),  // Key: solr_id
+                    node -> node.get("name").asText(),  // Key: solr_id
                     node -> node.get("score").asDouble()      // Value: score
                 ));
 
